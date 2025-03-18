@@ -498,8 +498,26 @@ def train_sentiment_model(train_path, test_path=None,
     
     return clf
 
-def predict_sentiment(text, model_path='sentiment_model.pkl', return_proba=False):
-    """Predict sentiment for text with optional confidence scores"""
+def predict_sentiment(text, model_path='sentiment_model.pkl', return_proba=False, neutral_threshold=0.2):
+    """Predict sentiment for text with optional confidence scores
+    
+    Parameters:
+    -----------
+    text : str or list
+        Input text to analyze
+    model_path : str
+        Path to the saved model file
+    return_proba : bool
+        If True, returns probability scores instead of class labels
+    neutral_threshold : float
+        Threshold for neutral sentiment (0.0-0.5). Values where the model confidence 
+        is within this threshold of 0.5 will be classified as neutral when return_proba=False
+        
+    Returns:
+    --------
+    If return_proba=True: probabilities (0-1 range, higher = more positive)
+    If return_proba=False: class labels (0=negative, 1=positive, 2=neutral)
+    """
     clf = pickle.load(open(model_path, 'rb'))
     
     if isinstance(text, str):
@@ -520,7 +538,20 @@ def predict_sentiment(text, model_path='sentiment_model.pkl', return_proba=False
     if return_proba:
         return clf.predict_proba(text)[:, 1]
     else:
-        return clf.predict(text)
+        # Get probability scores
+        proba = clf.predict_proba(text)[:, 1]
+        
+        # Apply classification with neutral threshold
+        predictions = np.zeros(len(text), dtype=int)
+        
+        # Find neutral predictions (where probability is close to 0.5)
+        for i, p in enumerate(proba):
+            if abs(p - 0.5) < neutral_threshold:
+                predictions[i] = 2  # Neutral
+            else:
+                predictions[i] = 1 if p >= 0.5 else 0  # Positive or negative
+                
+        return predictions
 
 if __name__ == "__main__":
     # Data file paths
@@ -549,7 +580,9 @@ if __name__ == "__main__":
         "The product works exactly as described. Very happy with my purchase!",
         "Customer service was terrible and the product broke after two days",
         "Just tried the new iPhone and it's amazing! #technology #apple",
-        "@friend Check out this cool new app I found! https://example.com"
+        "@friend Check out this cool new app I found! https://example.com",
+        "The weather seems fine today. Not too hot, not too cold.",
+        "I'm not sure if I liked it or not. It had some good parts but also some issues."
     ]
     
     # Get predictions
@@ -558,6 +591,6 @@ if __name__ == "__main__":
     
     print("\nSample predictions:")
     for text, pred, prob in zip(example_texts, predictions, proba):
-        sentiment = "positive" if pred == 1 else "negative"
-        prob_display = prob if pred == 1 else 1 - prob  # Show confidence in prediction
+        sentiment = "positive" if pred == 1 else "negative" if pred == 0 else "neutral"
+        prob_display = prob if pred == 1 else 1 - prob if pred == 0 else (1 - abs(prob - 0.5) * 2)
         print(f"{text} --> {sentiment} (confidence: {prob_display:.2f})") 
