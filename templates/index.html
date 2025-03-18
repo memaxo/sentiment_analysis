@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+            margin-bottom: 15px;
+            font-family: inherit;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .positive {
+            background-color: #d4f1e4;
+            border-left: 4px solid #27ae60;
+        }
+        .negative {
+            background-color: #fde4e4;
+            border-left: 4px solid #e74c3c;
+        }
+        .neutral {
+            background-color: #e9f2f9;
+            border-left: 4px solid #7f8c8d;
+        }
+        .confidence {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        #loader {
+            display: none;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background-color: #fde4e4;
+            border-left: 4px solid #e74c3c;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sentiment Analysis Tool</h1>
+        <form id="sentimentForm">
+            <textarea id="textInput" placeholder="Enter text to analyze sentiment..."></textarea>
+            <button type="submit">Analyze Sentiment</button>
+        </form>
+        
+        <div id="loader">
+            <div class="spinner"></div>
+        </div>
+        
+        <div id="error" class="error"></div>
+        
+        <div id="result">
+            <h3>Sentiment: <span id="sentiment"></span></h3>
+            <div class="confidence">Confidence: <span id="confidence"></span>%</div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('sentimentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const textInput = document.getElementById('textInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            const loader = document.getElementById('loader');
+            const errorDiv = document.getElementById('error');
+            
+            // Hide previous results and errors
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            
+            if (!textInput) {
+                errorDiv.textContent = 'Please enter some text to analyze';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // Show loader
+            loader.style.display = 'block';
+            
+            try {
+                const formData = new FormData();
+                formData.append('text', textInput);
+                
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                // Hide loader
+                loader.style.display = 'none';
+                
+                if (data.error) {
+                    errorDiv.textContent = data.error;
+                    errorDiv.style.display = 'block';
+                } else {
+                    // Update result
+                    document.getElementById('sentiment').textContent = data.sentiment;
+                    document.getElementById('confidence').textContent = Math.round(data.confidence * 100);
+                    
+                    // Apply appropriate styling based on sentiment
+                    resultDiv.className = '';
+                    resultDiv.classList.add(data.sentiment.toLowerCase());
+                    resultDiv.style.display = 'block';
+                }
+            } catch (error) {
+                loader.style.display = 'none';
+                errorDiv.textContent = 'Error connecting to server';
+                errorDiv.style.display = 'block';
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

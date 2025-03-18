@@ -1,0 +1,6 @@
+     services:
+       - type: web
+         name: sentiment-analyzer
+         env: python
+         buildCommand: pip install -r requirements.txt && python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt')"
+         startCommand: gunicorn sentiment_webapp:app
