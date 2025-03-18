@@ -77,21 +77,23 @@ if st.button("Analyze Sentiment", type="primary"):
         # Display spinner during prediction
         with st.spinner("Analyzing sentiment..."):
             try:
-                # Get sentiment prediction
+                # Get sentiment prediction using proper neutral threshold
                 sentiment_score = predict_sentiment([text_input], MODEL_PATH, return_proba=True)[0]
+                prediction = predict_sentiment([text_input], MODEL_PATH, return_proba=False, 
+                                             neutral_threshold=confidence_threshold)[0]
                 
-                # Determine sentiment category
-                if sentiment_score >= (0.5 + confidence_threshold):
+                # Determine sentiment category from prediction
+                if prediction == 1:  # Positive
                     sentiment = "Positive"
                     confidence = sentiment_score
                     color = "rgba(39, 174, 96, 0.2)"  # Green
                     emoji = "😃"
-                elif sentiment_score <= (0.5 - confidence_threshold):
+                elif prediction == 0:  # Negative
                     sentiment = "Negative"
                     confidence = 1 - sentiment_score
                     color = "rgba(231, 76, 60, 0.2)"  # Red
                     emoji = "😔"
-                else:
+                else:  # prediction == 2 (Neutral)
                     sentiment = "Neutral"
                     confidence = 1 - abs(sentiment_score - 0.5) * 2  # Scale confidence
                     color = "rgba(127, 140, 141, 0.2)"  # Gray

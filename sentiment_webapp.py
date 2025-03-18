@@ -56,20 +56,22 @@ def predict():
         })
     
     try:
-        # Get prediction and confidence
-        sentiment_score = predict_sentiment([text], MODEL_PATH, return_proba=True)[0]
-        prediction = 1 if sentiment_score >= 0.5 else 0
+        # Get neutral threshold from request or use default
+        neutral_threshold = float(request.form.get('threshold', 0.2))
         
-        # Determine sentiment label and confidence
+        # Get prediction directly using the updated predict_sentiment function
+        sentiment_score = predict_sentiment([text], MODEL_PATH, return_proba=True)[0]
+        prediction = predict_sentiment([text], MODEL_PATH, return_proba=False, 
+                                     neutral_threshold=neutral_threshold)[0]
+        
+        # Map numeric prediction to sentiment label
         if prediction == 1:
             sentiment = "Positive"
             confidence = sentiment_score
-        else:
+        elif prediction == 0:
             sentiment = "Negative"
             confidence = 1 - sentiment_score
-            
-        # Add neutral category for low confidence predictions
-        if 0.4 <= sentiment_score <= 0.6:
+        else:  # prediction == 2
             sentiment = "Neutral"
             confidence = 1 - abs(sentiment_score - 0.5) * 2  # Scale confidence
 
@@ -203,6 +205,14 @@ def create_templates():
         <h1>Sentiment Analysis Tool</h1>
         <form id="sentimentForm">
             <textarea id="textInput" placeholder="Enter text to analyze sentiment..."></textarea>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="thresholdSlider" style="display: block; margin-bottom: 5px;">Neutral Threshold: <span id="thresholdValue">0.2</span></label>
+                <input type="range" id="thresholdSlider" name="threshold" min="0.1" max="0.4" step="0.05" value="0.2" 
+                       style="width: 100%;" oninput="document.getElementById('thresholdValue').textContent = this.value">
+                <small style="color: #666; display: block; margin-top: 5px;">Higher values will classify more text as neutral.</small>
+            </div>
+            
             <button type="submit">Analyze Sentiment</button>
         </form>
         
@@ -243,6 +253,7 @@ def create_templates():
             try {
                 const formData = new FormData();
                 formData.append('text', textInput);
+                formData.append('threshold', document.getElementById('thresholdSlider').value);
                 
                 const response = await fetch('/predict', {
                     method: 'POST',
